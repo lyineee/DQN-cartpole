@@ -18,9 +18,9 @@ import numpy as np
 
 class Graph(object):
     def __init__(self):
-        plt.ion() #开启interactive mode 成功的关键函数
+        plt.ion() 
         plt.figure(1)
-        plt.clf() #清空画布上的所有内容
+        plt.clf() 
 
         self.data=np.array([])
 
@@ -63,15 +63,12 @@ class Pole(object):
     def train(self, step, display=0):
         self.observation, self.reward, self.done, self.info = self.env.step(
             self.env.action_space.sample())
-        # self.observation
         N = step
         L = 50
         for i in range(step):
-            # red=0
             first_step = self.dqn.begin_episode(self.observation)
             self.render(first_step, display)
             while True:
-                # red+=self.reward
                 this_step = self.dqn.step(self.reward, self.observation)
                 self.render(this_step, display)
                 if self.observation[0]<-3 or self.observation[0]>3:
