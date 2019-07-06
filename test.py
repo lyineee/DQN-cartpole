@@ -10,8 +10,30 @@ import dopamine.replay_memory.circular_replay_buffer
 import gin.tf.external_configurables
 import gin.tf
 
+#graph
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+
+
+class Graph(object):
+    def __init__(self):
+        plt.ion() #开启interactive mode 成功的关键函数
+        plt.figure(1)
+        plt.clf() #清空画布上的所有内容
+
+        self.data=np.array([])
+
+    def draw(self,data):
+        plt.clf()
+        self.data=np.append(self.data,data)
+        index=np.arange(0,np.size(self.data))
+        plt.plot(index,self.data)
+        plt.draw()
+        plt.pause(0.01)
+
 class Pole(object):
-    def __init__(self, init_qdn=1):
+    def __init__(self, init_qdn=1,graph=None):
         if init_qdn == 1:
             config = tf.ConfigProto(allow_soft_placement=True)
             session = tf.Session('', config=config)
@@ -19,13 +41,13 @@ class Pole(object):
                                 observation_dtype=tf.float64,
                                 stack_size=1,
                                 network=gym_lib.cartpole_dqn_network,
-                                gamma=0.99,
+                                gamma=0.80,
                                 update_horizon=1,
                                 min_replay_history=500, 
                                 update_period=4,
                                 target_update_period=100,
                                 tf_device='/cpu:*' , # use '/cpu:*' for non-GPU version
-                                optimizer=tf.train.AdamOptimizer(epsilon = 0.0003125))
+                                optimizer=tf.train.AdamOptimizer(learning_rate=0.0001,epsilon = 0.0000003125))
             session.run(tf.global_variables_initializer())
             print('init complete')
         self.env = gym.make('CartPole-v0')
@@ -36,6 +58,8 @@ class Pole(object):
         self.done = -1
         self.info = -1
 
+        self.graph=graph
+
     def train(self, step, display=0):
         self.observation, self.reward, self.done, self.info = self.env.step(
             self.env.action_space.sample())
@@ -43,7 +67,6 @@ class Pole(object):
         N = step
         L = 50
         for i in range(step):
-            # start_time=time.time()
             # red=0
             first_step = self.dqn.begin_episode(self.observation)
             self.render(first_step, display)
@@ -57,7 +80,8 @@ class Pole(object):
                     self.dqn.end_episode(self.reward)
                     self.env.reset()
                     break
-
+            if self.graph != None and i % 30 == 0:
+                self.eval(5)
             print("{{{0}>{1}}} {2}% ".format('='*round(i*L/N),
                                              '.'*round((N-i)*L/N), round(i*100/N)), end="\r")
         # self.dqn.bundle_and_checkpoint('./',1)
@@ -65,6 +89,27 @@ class Pole(object):
 
     def end(self):
         self.env.close()
+
+    def eval(self,n=10):
+        self.observation, self.reward, self.done, self.info = self.env.step(
+            self.env.action_space.sample())
+        self.dqn.eval_mode=True
+        total_reward=0
+        for _ in range(n):
+            reward=0
+            while True:
+                this_step = self.dqn.begin_episode(self.observation)
+                self.render(this_step)
+                reward+=self.reward
+                if self.done == True:
+                    self.env.reset()
+                    break
+            total_reward+=reward
+        average_reward=total_reward/n
+        if self.graph != None:
+            self.graph.draw(average_reward)
+        self.dqn.eval_mode=False
+        
 
     def render(self, control=-1, display=0):
         if control == -1:
@@ -91,6 +136,7 @@ class Pole(object):
 
 
 if __name__ == "__main__":
-    pole = Pole()
+    graph=Graph()
+    pole = Pole(graph=graph)
     pole.train(1000)
     pole.test(100)
