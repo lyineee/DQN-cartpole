@@ -123,7 +123,7 @@ class Pole(object):
         self.observation, self.reward, self.done, self.info = self.env.step(
             self.env.action_space.sample())
         self.dqn.eval_mode=True
-        for i in range(step):
+        for _ in range(step):
             self.total_reward=0
             while True:
                 this_step = self.dqn.begin_episode(self.observation)
